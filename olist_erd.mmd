@@ -1,0 +1,157 @@
+%% ============================================================
+%% OLIST DATA WAREHOUSE - STAR SCHEMA (v2 - da dong bo voi DDL that)
+%% Sua so voi ban cu:
+%%  1) Dim_Date: xoa is_holiday (khong co trong DDL),
+%%     them month_name / year_month / year_quarter (co trong DDL nhung ERD cu thieu)
+%%  2) Fact_Delivery -> Dim_Date: gan nhan vai tro cho tung duong noi
+%%     (purchase / approved / carrier / delivery / estimated)
+%%  3) Them chu thich SCD Type ngay trong tung bang
+%%     (Dim_Customer = SCD Type 2, cac Dim con lai = Type 0/1)
+%% ============================================================
+erDiagram
+    DIM_DATE ||--o{ FACT_SALES : "purchase_date"
+    DIM_DATE ||--o{ FACT_PAYMENT : "payment_date"
+    DIM_DATE ||--o{ FACT_REVIEW : "review_date"
+    DIM_DATE ||--o{ FACT_DELIVERY : "purchase_date"
+    DIM_DATE ||--o{ FACT_DELIVERY : "approved_date"
+    DIM_DATE ||--o{ FACT_DELIVERY : "carrier_date"
+    DIM_DATE ||--o{ FACT_DELIVERY : "delivery_date"
+    DIM_DATE ||--o{ FACT_DELIVERY : "estimated_date"
+    DIM_CUSTOMER ||--o{ FACT_SALES : "purchased_by"
+    DIM_CUSTOMER ||--o{ FACT_PAYMENT : "paid_by"
+    DIM_CUSTOMER ||--o{ FACT_REVIEW : "reviewed_by"
+    DIM_CUSTOMER ||--o{ FACT_DELIVERY : "shipped_to"
+    DIM_PRODUCT ||--o{ FACT_SALES : "product_sold"
+    DIM_SELLER ||--o{ FACT_SALES : "sold_by"
+    DIM_PAYMENT_TYPE ||--o{ FACT_PAYMENT : "paid_via"
+    DIM_ORDER_STATUS ||--o{ FACT_DELIVERY : "current_status"
+
+    DIM_DATE {
+        int date_key PK
+        date full_date
+        tinyint day_of_month
+        tinyint day_of_week
+        varchar day_name
+        tinyint week_of_year
+        tinyint month
+        varchar month_name
+        tinyint quarter
+        smallint year
+        bit is_weekend
+        char year_month
+        char year_quarter
+        varchar scd_type "SCD Type 0 - danh muc tinh, dung lai (role-playing)"
+    }
+
+    DIM_CUSTOMER {
+        int customer_key PK
+        varchar customer_id
+        varchar customer_unique_id
+        varchar customer_zip_code
+        varchar customer_city
+        char customer_state
+        date effective_date
+        date expiration_date
+        bit is_current
+        varchar scd_type "SCD Type 2 - theo doi lich su thay doi dia ly"
+    }
+
+    DIM_PRODUCT {
+        int product_key PK
+        varchar product_id
+        varchar product_category_pt
+        varchar product_category_en
+        int product_photos_qty
+        int product_weight_g
+        int product_length_cm
+        int product_height_cm
+        int product_width_cm
+        varchar scd_type "SCD Type 1 - ghi de thuoc tinh mo ta"
+    }
+
+    DIM_SELLER {
+        int seller_key PK
+        varchar seller_id
+        varchar seller_zip_code
+        varchar seller_city
+        char seller_state
+        varchar scd_type "SCD Type 1 - ghi de thuoc tinh mo ta"
+    }
+
+    DIM_PAYMENT_TYPE {
+        int payment_type_key PK
+        varchar payment_type
+        varchar payment_type_desc
+        varchar scd_type "SCD Type 0 - danh muc tinh"
+    }
+
+    DIM_ORDER_STATUS {
+        int status_key PK
+        varchar status_code
+        varchar status_name
+        varchar status_desc
+        bit is_completed
+        int display_order
+        varchar scd_type "SCD Type 0 - danh muc tinh"
+    }
+
+    FACT_SALES {
+        bigint sales_key PK
+        varchar order_id
+        int order_item_id
+        int purchase_date_key FK
+        int customer_key FK
+        int product_key FK
+        int seller_key FK
+        decimal price
+        decimal freight_value
+        decimal total_value
+        int item_count
+        varchar grain "1 dong = 1 order_item (order_id + order_item_id)"
+    }
+
+    FACT_PAYMENT {
+        bigint payment_key PK
+        varchar order_id
+        int payment_sequential
+        int payment_date_key FK
+        int customer_key FK
+        int payment_type_key FK
+        decimal payment_value
+        int payment_installments
+        int payment_count
+        varchar grain "1 dong = 1 lan thanh toan (order_id + payment_sequential)"
+    }
+
+    FACT_REVIEW {
+        bigint review_key PK
+        varchar order_id
+        int date_key FK
+        int customer_key FK
+        decimal review_score
+        bit has_title
+        bit has_message
+        int review_count
+        varchar grain "1 dong = 1 review (review_id)"
+    }
+
+    FACT_DELIVERY {
+        bigint delivery_key PK
+        varchar order_id
+        int purchase_date_key FK
+        int approved_date_key FK
+        int carrier_date_key FK
+        int delivery_date_key FK
+        int estimated_date_key FK
+        int customer_key FK
+        int status_key FK
+        decimal approval_hours
+        decimal carrier_days
+        decimal delivery_days
+        int estimated_days
+        int days_early_late
+        bit is_on_time
+        bit is_delivered
+        int order_count
+        varchar grain "1 dong = 1 order_id"
+    }
